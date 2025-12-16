@@ -1,15 +1,25 @@
 # literate-spork
 
-A tool to retrieve commit changes from a git repository based on a search prompt.
+A tool to retrieve commit changes from a git repository based on a search prompt, with learning capabilities to guide AI coding agents in understanding project coding style and conventions.
 
 ## Features
 
+### Core Features
 - Search through git commit history using keywords
 - Filter commits by message, author, or commit hash
 - Display commit summaries with author and date information
 - Show full diffs for matching commits
 - List files changed in commits
 - Support for limiting search to recent commits
+
+### AI Coding Agent Features
+- **AI-Optimized Format**: Structured output specifically designed for AI coding agents
+- **Learning Mode**: Retrieve related commits to understand coding style and project conventions
+- **Context Guidance**: Extract implementation patterns and provide AI-specific guidance
+- **File-based Search**: Find commits that modified specific files
+- **Pattern Analysis**: Analyze commit patterns to learn project conventions
+- **JSON Export**: Machine-readable format for programmatic processing
+- **Multi-format Output**: Human, AI-optimized, or JSON formats
 
 ## Installation
 
@@ -69,7 +79,45 @@ Display all commits without filtering:
 python retrieve_commits.py "" --all
 ```
 
+### Learning Mode - Find Related Commits
+
+Retrieve commits related to specific files or patterns to learn coding style and conventions:
+
+```bash
+# Find commits that modified a specific file
+python retrieve_commits.py --file src/auth.py
+
+# Find commits related to file patterns (for learning context)
+python retrieve_commits.py --related "*.py" "tests/*"
+
+# Learning mode: show detailed context for implementing similar features
+python retrieve_commits.py "authentication" --learn
+
+# Analyze patterns in commits to understand project conventions
+python retrieve_commits.py --related "src/api/*" --analyze
+```
+
+### AI Coding Agent Mode
+
+Optimized output formats for AI coding agents to guide their implementation:
+
+```bash
+# AI-optimized format with structured guidance
+python retrieve_commits.py --related "*.py" --format ai
+
+# Get contextual guidance for AI implementation
+python retrieve_commits.py "bug fix" --context --format ai
+
+# JSON output for programmatic processing
+python retrieve_commits.py --file app.py --format json
+
+# Full context for AI: related commits + analysis + guidance
+python retrieve_commits.py --related "src/auth/*" --learn --format ai
+```
+
 ## Examples
+
+### Basic Search Examples
 
 1. Find commits related to bug fixes:
    ```bash
@@ -91,10 +139,53 @@ python retrieve_commits.py "" --all
    python retrieve_commits.py "database" --files
    ```
 
+### Learning and Context Examples
+
+5. Learn from commits that modified authentication code:
+   ```bash
+   python retrieve_commits.py --file src/auth.py --learn
+   ```
+
+6. Find related commits for implementing a new API feature:
+   ```bash
+   python retrieve_commits.py --related "src/api/*" --learn
+   ```
+
+7. Analyze coding patterns in all Python files:
+   ```bash
+   python retrieve_commits.py --related "*.py" --analyze
+   ```
+
+8. Learn implementation patterns for a specific feature:
+   ```bash
+   python retrieve_commits.py "user authentication" --learn --diff
+   ```
+
+### AI Coding Agent Examples
+
+9. Get AI-optimized guidance for implementing authentication:
+   ```bash
+   python retrieve_commits.py --related "src/auth/*" --format ai --context
+   ```
+
+10. Export commit data as JSON for AI processing:
+    ```bash
+    python retrieve_commits.py "feature" --format json > commits.json
+    ```
+
+11. Guide AI agent with full context (analysis + diffs + guidance):
+    ```bash
+    python retrieve_commits.py --related "*.py" --learn --format ai
+    ```
+
 ## Command-line Options
 
 ```
-usage: retrieve_commits.py [-h] [-r REPO] [-n MAX_COUNT] [-d] [-f] [--all] prompt
+usage: retrieve_commits.py [-h] [-r REPO] [-n MAX_COUNT] [-d] [-f] [--all] 
+                           [--file FILE] [--related RELATED [RELATED ...]]
+                           [--analyze] [--learn] [--format {human,ai,json}]
+                           [--context]
+                           [prompt]
 
 Retrieve commit changes from git repository based on a search prompt
 
@@ -109,6 +200,15 @@ optional arguments:
   -d, --diff            Show full diff for matching commits
   -f, --files           Show files changed in matching commits
   --all                 Show all commits without filtering (ignores prompt)
+  --file FILE           Search commits that modified a specific file
+  --related RELATED [RELATED ...]
+                        Find commits related to file patterns for learning context
+  --analyze             Analyze commit patterns to learn coding style and conventions
+  --learn               Learning mode: show detailed context from related commits
+  --format {human,ai,json}
+                        Output format: 'human' (default), 'ai' (optimized for AI agents),
+                        or 'json' (machine-readable)
+  --context             Include contextual guidance for AI coding agents
 ```
 
 ## How It Works
@@ -119,11 +219,25 @@ The tool performs the following steps:
 2. **Filters Results**: Searches commit messages, author names, and hashes for the given prompt (case-insensitive)
 3. **Displays Information**: Shows matching commits with their metadata
 4. **Optional Details**: Can show full diffs or file lists for each matching commit
+5. **AI Guidance**: Analyzes patterns and provides structured output for AI coding agents
+6. **Context Extraction**: Identifies coding conventions, style patterns, and implementation approaches
 
 ## Use Cases
 
+### For Developers
 - **Code Archaeology**: Find when specific features were added or bugs were fixed
 - **Author Tracking**: Identify commits by a particular developer
 - **Change Review**: Review changes related to specific functionality
 - **Documentation**: Generate reports of changes for release notes
 - **Debugging**: Trace the history of code changes related to an issue
+- **Onboarding**: Help new developers understand the project's development patterns
+
+### For AI Coding Agents
+- **Context Learning**: Retrieve related commits to understand how similar features were implemented
+- **Style Analysis**: Analyze commit patterns to learn project coding conventions and style
+- **Pattern Recognition**: Extract implementation patterns from historical commits
+- **Consistency Enforcement**: Ensure AI-generated code follows existing patterns and conventions
+- **Feature Planning**: Review how similar features were implemented before generating new code
+- **Guided Implementation**: Use structured output to guide AI agents in maintaining code quality
+- **Convention Detection**: Automatically detect and apply project-specific conventions
+- **Error Pattern Learning**: Learn from bug fixes to avoid similar issues
