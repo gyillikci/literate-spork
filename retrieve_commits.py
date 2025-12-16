@@ -16,6 +16,16 @@ from typing import List, Dict, Optional
 
 class CommitRetriever:
     """Class to retrieve and filter git commits based on search criteria."""
+    
+    # Constants for issue/solution finding
+    MIN_KEYWORD_LENGTH = 3
+    FIX_KEYWORDS = ['fix', 'fixed', 'fixes', 'resolve', 'resolved', 'resolves', 
+                    'close', 'closed', 'closes', 'address', 'addressed', 'addresses']
+    ISSUE_PATTERN = re.compile(
+        r'\b(?:fix(?:es|ed)?|close(?:s|d)?|resolve(?:s|d)?|address(?:es|ed)?|issue|bug)\b\s*[:#]?\s*(\d+)',
+        re.IGNORECASE
+    )
+    WORD_PATTERN = re.compile(r'\b\w+\b')
 
     def __init__(self, repo_path: str = "."):
         """
@@ -326,16 +336,11 @@ class CommitRetriever:
         Returns:
             Dictionary mapping issue numbers to lists of commits that reference them
         """
-        issue_pattern = re.compile(
-            r'(?:fix(?:es|ed)?|close(?:s|d)?|resolve(?:s|d)?|address(?:es|ed)?|issue|bug)\s*[:#]?\s*(\d+)',
-            re.IGNORECASE
-        )
-        
         issue_to_commits = {}
         
         for commit in commits:
             message = commit["message"]
-            matches = issue_pattern.findall(message)
+            matches = self.ISSUE_PATTERN.findall(message)
             
             for issue_num in matches:
                 issue_key = f"#{issue_num}"
@@ -372,23 +377,21 @@ class CommitRetriever:
         all_commits = self.get_commits(max_count)
         
         # Extract keywords from problem description
-        problem_keywords = set(re.findall(r'\b\w+\b', problem_description.lower()))
-        problem_keywords = {w for w in problem_keywords if len(w) > 3}
+        problem_keywords = set(self.WORD_PATTERN.findall(problem_description.lower()))
+        problem_keywords = {w for w in problem_keywords if len(w) > self.MIN_KEYWORD_LENGTH}
         
         # Find commits that are fixes/solutions
         solution_commits = []
-        fix_keywords = ['fix', 'fixed', 'fixes', 'resolve', 'resolved', 'resolves', 
-                       'close', 'closed', 'closes', 'address', 'addressed', 'addresses']
         
         for commit in all_commits:
             message_lower = commit["message"].lower()
             
             # Check if it's a fix/solution commit
-            is_fix = any(keyword in message_lower for keyword in fix_keywords)
+            is_fix = any(keyword in message_lower for keyword in self.FIX_KEYWORDS)
             
             if is_fix:
                 # Calculate relevance based on keyword overlap
-                commit_words = set(re.findall(r'\b\w+\b', message_lower))
+                commit_words = set(self.WORD_PATTERN.findall(message_lower))
                 overlap = problem_keywords.intersection(commit_words)
                 
                 if overlap:
@@ -689,7 +692,7 @@ Examples:
         print(f"Retrieved {len(commits)} commits:\n")
     else:
         if not args.prompt:
-            print("Error: prompt is required when --all, --file, --related, or --find-solution flags are not used.", file=sys.stderr)
+            print("Error: prompt is required when no exclusive flags are used (--all, --file, --related, --find-solution).", file=sys.stderr)
             return 1
         commits = retriever.search_commits(args.prompt, args.max_count)
         print(f"Found {len(commits)} commits matching '{args.prompt}':\n")
