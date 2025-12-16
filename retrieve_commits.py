@@ -57,7 +57,7 @@ class CommitRetriever:
         Returns:
             List of commit dictionaries with hash, author, date, and message
         """
-        args = ["log", "--format=%H|%an|%ad|%s", "--date=iso"]
+        args = ["log", "--format=%H%x00%an%x00%ad%x00%s", "--date=iso"]
         if max_count:
             args.append(f"-n{max_count}")
         
@@ -67,10 +67,14 @@ class CommitRetriever:
             print(f"Error retrieving commits: {e}", file=sys.stderr)
             return []
         
+        # Handle empty repository
+        if not output or not output.strip():
+            return []
+        
         commits = []
         for line in output.strip().split("\n"):
             if line:
-                parts = line.split("|", 3)
+                parts = line.split("\x00", 3)
                 if len(parts) == 4:
                     commits.append({
                         "hash": parts[0],
@@ -134,6 +138,9 @@ class CommitRetriever:
         """
         try:
             output = self._run_git_command(["show", "--name-only", "--format=", commit_hash])
+            # Handle empty output or commits with no files (e.g., merge commits)
+            if not output or not output.strip():
+                return []
             return [f for f in output.strip().split("\n") if f]
         except subprocess.CalledProcessError as e:
             print(f"Error retrieving files for commit {commit_hash}: {e}", file=sys.stderr)
@@ -166,7 +173,9 @@ Examples:
     
     parser.add_argument(
         "prompt",
-        help="Search query to filter commits (searches in message, author, and hash)"
+        nargs="?",
+        default="",
+        help="Search query to filter commits (searches in message, author, and hash). Not required with --all flag."
     )
     
     parser.add_argument(
@@ -209,6 +218,9 @@ Examples:
         commits = retriever.get_commits(args.max_count)
         print(f"Retrieved {len(commits)} commits:\n")
     else:
+        if not args.prompt:
+            print("Error: prompt is required when --all flag is not used.", file=sys.stderr)
+            return 1
         commits = retriever.search_commits(args.prompt, args.max_count)
         print(f"Found {len(commits)} commits matching '{args.prompt}':\n")
     
