@@ -241,7 +241,6 @@ class CommitRetriever:
         analysis = {
             "total_commits": len(commits),
             "authors": {},
-            "file_types": {},
             "common_keywords": {},
             "commit_types": {}
         }
@@ -321,7 +320,7 @@ def print_commit_summary(commit: Dict[str, str], show_index: bool = True, index:
     print()
 
 
-def format_for_ai(commits: List[Dict[str, str]], retriever, include_diffs: bool = True, 
+def format_for_ai(commits: List[Dict[str, str]], retriever: 'CommitRetriever', include_diffs: bool = True, 
                   include_analysis: bool = True) -> str:
     """
     Format commit information optimized for AI coding agents.
@@ -408,7 +407,7 @@ def format_for_ai(commits: List[Dict[str, str]], retriever, include_diffs: bool 
     return "\n".join(output)
 
 
-def format_as_json(commits: List[Dict[str, str]], retriever, include_diffs: bool = False,
+def format_as_json(commits: List[Dict[str, str]], retriever: 'CommitRetriever', include_diffs: bool = False,
                    include_analysis: bool = False) -> str:
     """
     Format commit information as JSON for machine processing.
