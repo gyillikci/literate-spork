@@ -309,6 +309,104 @@ class CommitRetriever:
         
         return summary
 
+    def extract_issue_references(self, commits: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]]:
+        """
+        Extract issue/bug references from commit messages and link them to commits.
+        
+        Recognizes patterns like:
+        - fixes #123, fix #123, fixed #123
+        - closes #123, close #123, closed #123
+        - resolves #123, resolve #123, resolved #123
+        - addresses #123, address #123, addressed #123
+        - issue #123, bug #123
+        
+        Args:
+            commits: List of commit dictionaries
+            
+        Returns:
+            Dictionary mapping issue numbers to lists of commits that reference them
+        """
+        issue_pattern = re.compile(
+            r'(?:fix(?:es|ed)?|close(?:s|d)?|resolve(?:s|d)?|address(?:es|ed)?|issue|bug)\s*[:#]?\s*(\d+)',
+            re.IGNORECASE
+        )
+        
+        issue_to_commits = {}
+        
+        for commit in commits:
+            message = commit["message"]
+            matches = issue_pattern.findall(message)
+            
+            for issue_num in matches:
+                issue_key = f"#{issue_num}"
+                if issue_key not in issue_to_commits:
+                    issue_to_commits[issue_key] = []
+                
+                issue_to_commits[issue_key].append({
+                    "hash": commit["hash"],
+                    "hash_short": commit["hash"][:8],
+                    "author": commit["author"],
+                    "date": commit["date"],
+                    "message": commit["message"]
+                })
+        
+        return issue_to_commits
+
+    def find_solution_for_problem(self, problem_description: str, max_count: Optional[int] = None) -> Dict:
+        """
+        Find commits that solved similar problems based on a problem description.
+        
+        This method searches for commits that:
+        1. Mention fix/resolve/close keywords
+        2. Have similar keywords to the problem description
+        3. Show the implementation solution
+        
+        Args:
+            problem_description: Description of the problem/bug/feature request
+            max_count: Maximum number of commits to analyze
+            
+        Returns:
+            Dictionary with matching commits and analysis
+        """
+        # Get all commits
+        all_commits = self.get_commits(max_count)
+        
+        # Extract keywords from problem description
+        problem_keywords = set(re.findall(r'\b\w+\b', problem_description.lower()))
+        problem_keywords = {w for w in problem_keywords if len(w) > 3}
+        
+        # Find commits that are fixes/solutions
+        solution_commits = []
+        fix_keywords = ['fix', 'fixed', 'fixes', 'resolve', 'resolved', 'resolves', 
+                       'close', 'closed', 'closes', 'address', 'addressed', 'addresses']
+        
+        for commit in all_commits:
+            message_lower = commit["message"].lower()
+            
+            # Check if it's a fix/solution commit
+            is_fix = any(keyword in message_lower for keyword in fix_keywords)
+            
+            if is_fix:
+                # Calculate relevance based on keyword overlap
+                commit_words = set(re.findall(r'\b\w+\b', message_lower))
+                overlap = problem_keywords.intersection(commit_words)
+                
+                if overlap:
+                    solution_commits.append({
+                        "commit": commit,
+                        "relevance_score": len(overlap),
+                        "matching_keywords": list(overlap)
+                    })
+        
+        # Sort by relevance
+        solution_commits.sort(key=lambda x: x["relevance_score"], reverse=True)
+        
+        return {
+            "problem_description": problem_description,
+            "total_solutions_found": len(solution_commits),
+            "solutions": solution_commits
+        }
+
 
 def print_commit_summary(commit: Dict[str, str], show_index: bool = True, index: int = 0):
     """Print a formatted summary of a commit."""
@@ -465,6 +563,8 @@ Examples:
   %(prog)s --related "*.py" --format ai   # AI-optimized format for coding agents
   %(prog)s "bug fix" --context --format ai # Get AI guidance with implementation context
   %(prog)s --file app.py --format json    # Machine-readable JSON output
+  %(prog)s "fix" --link-issues            # Link commits to issues/bugs they fixed
+  %(prog)s --find-solution "auth timeout" # Find commits that solved similar problems
         """
     )
     
@@ -541,10 +641,39 @@ Examples:
         help="Include contextual guidance for AI coding agents based on commit patterns"
     )
     
+    parser.add_argument(
+        "--link-issues",
+        action="store_true",
+        help="Link commits to issues/bugs they fixed (extracts issue references from commit messages)"
+    )
+    
+    parser.add_argument(
+        "--find-solution",
+        metavar="PROBLEM",
+        help="Find commits that solved similar problems (provide problem description)"
+    )
+    
     args = parser.parse_args()
     
     # Initialize retriever
     retriever = CommitRetriever(args.repo)
+    
+    # Handle find-solution mode
+    if args.find_solution:
+        solution_results = retriever.find_solution_for_problem(args.find_solution, args.max_count)
+        print(f"Problem: {solution_results['problem_description']}")
+        print(f"Found {solution_results['total_solutions_found']} potential solutions:\n")
+        
+        for i, solution in enumerate(solution_results['solutions'][:10], 1):
+            commit = solution['commit']
+            print(f"{i}. Commit: {commit['hash'][:8]}")
+            print(f"   Author: {commit['author']}")
+            print(f"   Date: {commit['date']}")
+            print(f"   Message: {commit['message']}")
+            print(f"   Relevance: {solution['relevance_score']} matching keywords: {', '.join(solution['matching_keywords'])}")
+            print()
+        
+        return 0
     
     # Handle file-specific search
     if args.file:
@@ -560,7 +689,7 @@ Examples:
         print(f"Retrieved {len(commits)} commits:\n")
     else:
         if not args.prompt:
-            print("Error: prompt is required when --all, --file, or --related flags are not used.", file=sys.stderr)
+            print("Error: prompt is required when --all, --file, --related, or --find-solution flags are not used.", file=sys.stderr)
             return 1
         commits = retriever.search_commits(args.prompt, args.max_count)
         print(f"Found {len(commits)} commits matching '{args.prompt}':\n")
@@ -568,6 +697,25 @@ Examples:
     if not commits:
         print("No matching commits found.")
         return 0
+    
+    # Handle issue linking if requested
+    if args.link_issues:
+        issue_links = retriever.extract_issue_references(commits)
+        if issue_links:
+            print("=" * 80)
+            print("ISSUE/BUG TO COMMIT MAPPING")
+            print("=" * 80)
+            print(f"\nFound {len(issue_links)} issues/bugs referenced in commits:\n")
+            
+            for issue, linked_commits in sorted(issue_links.items()):
+                print(f"{issue}:")
+                for commit in linked_commits:
+                    print(f"  - [{commit['hash_short']}] {commit['message'][:70]}")
+                    print(f"    By {commit['author']} on {commit['date'][:10]}")
+                print()
+            
+            print("=" * 80)
+            print()
     
     # Handle different output formats
     if args.format == "json":

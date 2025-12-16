@@ -20,6 +20,8 @@ A tool to retrieve commit changes from a git repository based on a search prompt
 - **Pattern Analysis**: Analyze commit patterns to learn project conventions
 - **JSON Export**: Machine-readable format for programmatic processing
 - **Multi-format Output**: Human, AI-optimized, or JSON formats
+- **Issue/Bug Linking**: Link commits to issues/bugs they fixed (extracts references from commit messages)
+- **Solution Finder**: Find commits that solved similar problems based on problem descriptions
 
 ## Installation
 
@@ -115,6 +117,21 @@ python retrieve_commits.py --file app.py --format json
 python retrieve_commits.py --related "src/auth/*" --learn --format ai
 ```
 
+### Issue/Bug Linking and Solution Finding
+
+Link commits to issues and find solutions to problems:
+
+```bash
+# Link commits to issues/bugs they fixed
+python retrieve_commits.py "fix" --link-issues
+
+# Find commits that solved similar problems
+python retrieve_commits.py --find-solution "authentication timeout error"
+
+# Combine with other features
+python retrieve_commits.py --find-solution "memory leak" --diff
+```
+
 ## Examples
 
 ### Basic Search Examples
@@ -178,13 +195,31 @@ python retrieve_commits.py --related "src/auth/*" --learn --format ai
     python retrieve_commits.py --related "*.py" --learn --format ai
     ```
 
+### Issue Linking and Solution Finding Examples
+
+12. Link commits to the issues they fixed:
+    ```bash
+    python retrieve_commits.py "fix" --link-issues
+    ```
+
+13. Find how similar problems were solved:
+    ```bash
+    python retrieve_commits.py --find-solution "database connection timeout"
+    ```
+
+14. Find solutions with full implementation details:
+    ```bash
+    python retrieve_commits.py --find-solution "memory leak in cache" --diff
+    ```
+
 ## Command-line Options
 
 ```
 usage: retrieve_commits.py [-h] [-r REPO] [-n MAX_COUNT] [-d] [-f] [--all] 
                            [--file FILE] [--related RELATED [RELATED ...]]
                            [--analyze] [--learn] [--format {human,ai,json}]
-                           [--context]
+                           [--context] [--link-issues]
+                           [--find-solution PROBLEM]
                            [prompt]
 
 Retrieve commit changes from git repository based on a search prompt
@@ -209,6 +244,9 @@ optional arguments:
                         Output format: 'human' (default), 'ai' (optimized for AI agents),
                         or 'json' (machine-readable)
   --context             Include contextual guidance for AI coding agents
+  --link-issues         Link commits to issues/bugs they fixed (extracts issue references)
+  --find-solution PROBLEM
+                        Find commits that solved similar problems (provide problem description)
 ```
 
 ## How It Works
@@ -241,3 +279,5 @@ The tool performs the following steps:
 - **Guided Implementation**: Use structured output to guide AI agents in maintaining code quality
 - **Convention Detection**: Automatically detect and apply project-specific conventions
 - **Error Pattern Learning**: Learn from bug fixes to avoid similar issues
+- **Issue Tracking**: Link issues/bugs with the commits that fixed them
+- **Solution Discovery**: Find how similar problems were solved in the past
